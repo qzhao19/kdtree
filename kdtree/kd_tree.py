@@ -90,6 +90,41 @@ class KDTree(object):
         partition_axis = np.argmax(range_bounds)
 
 
+        # print(range_bounds)
+        # print(partition_axis)
+
+        radius = 0
+        for i in range(n_features):
+            radius += np.power(0.5 * np.abs(upper_bounds[i] - lower_bounds[i]), self.p)
+        radius = np.power(radius, 1 / self.p)
+
+        if (n_samples % 2) == 0:
+            mid_index = int(np.ceil(n_samples / 2))
+        else:
+            mid_index = int(np.ceil(n_samples / 2)) - 1
+
+        print(X[:, partition_axis])
+        median = np.sort(X[:, partition_axis])[mid_index]
+        print(median)
+
+        # selected_data = 
+        equal = np.where(X[:, partition_axis] == median)
+        less = np.where(X[:, partition_axis] < median)
+        greater = np.where(X[:, partition_axis] > median)
+
+
+        print(equal)
+        root.data = X[equal, :]
+        root.label = y[equal]
+
+        # print(X[equal, :])
+        # print(dataset[equal, -1])
+        # root.partition_value = median
+        root.partition_axis = partition_axis
+        root.radius = radius
+
+
+
 
 
 
