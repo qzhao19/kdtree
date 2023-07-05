@@ -124,6 +124,36 @@ class KDTree(object):
         root.radius = radius
 
 
+     # if len(less) > 1:
+        left_child = Node()
+        # root.left_child = left_child
+        self._build_tree(left_child, X[less, :], y[less])
+
+        # if len(greater) > 1:
+        right_child = Node()
+        # root.right_child = right_child
+        self._build_tree(right_child, X[greater, :], y[less])
+
+        root.left_child = left_child
+        root.right_child = right_child
+
+
+
+    def build_tree(self, X, y):
+        self.root = Node()
+        # X_y = np.c_[X, y]
+        self._build_tree(self.root, X, y)
+
+
+    def dfs(self, root):
+        if not root:
+            return 
+
+        self.dfs(root.left_child)
+        # self.tmp.append((partition_axis, root.partition_value))
+        self.dfs(root.right_child)
+
+
 
 
 
