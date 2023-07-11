@@ -1,162 +1,85 @@
+import copy
 import numpy as np
 
-class Node(object):
-    def __init__(self, 
-        
-        # begin_index = -1, 
-        # end_index = -1, 
-        data = None,
-        label = None,
-        is_leaf = False, 
-        partition_axis = -1, 
-        # partition_value = np.Inf, 
-        radius = -1, 
-        left_child = None, 
-        right_child = None):
-        
-        # self.begin_index = begin_index
-        # self.end_index = end_index
-
+class KDTree(object):
+    def __init__(self, data, leaf_size = 10):
         self.data = data
-        self.label = label
 
-        self.is_leaf = is_leaf
-        self.partition_axis = partition_axis
-        # self.partition_value = partition_value
-        self.radius = radius
-
-        self.left_child = left_child
-        self.right_child = right_child
-
-
-
-class KDTree(object):   
-    def __init__(self, leaf_size = 40, metric = "euclidean"):
-        
-        # self.data = data
-        # if self.data.size == 0:
-        #     raise ValueError("X is an empty array")
+        if self.data.size == 0:
+            raise ValueError("X is an empty array")
 
         if leaf_size < 1:
             raise ValueError("leaf_size must be greater than or equal to 1")
         self.leaf_size = leaf_size
-        self.metric = metric
 
-        # self.n_samples = self.data.shape[0]
-        # self.n_features = self.data.shape[1]
+        self.root = []
 
-        # self.n_levels = int(np.log2(np.max(1, (self.n_samples - 1) / self.leaf_size)) + 1)
-        # self.n_nodes = int(2 ** self.n_levels) - 1
-
-        if metric == "euclidean":
-            self.p = 2
-        elif metric == "manhattan":
-            self.p = 1
-        # elif metric == "minkowski":
-        #     self.p = 
-
-        self.tmp = []
-
-
-    def _build_tree(self, root, X, y):
-        
-        n_samples = X.shape[0]
-        n_features = X.shape[1]
-
-        lower_bounds = np.zeros(n_features)
-        upper_bounds = np.zeros(n_features)
-        range_bounds = np.zeros(n_features)
-
-        for i in range(n_features):
-            lower_bounds[i] = np.Inf
-            upper_bounds[i] = -np.Inf
-        
-        # for i in range(n_samples):
-        #     for j in range(n_features):
-        #         lower_bounds[j] = min(lower_bounds[j], dataset[i, j])
-        #         upper_bounds[j] = max(upper_bounds[j], dataset[i, j])
-
-        lower_bounds = np.min(X, axis = 0)
-        upper_bounds = np.max(X, axis = 0)
-
-        
-        # partition_axis = 0
-        # for i in range(n_features):
-        #     range_bounds[i] = upper_bounds[i] - lower_bounds[i]
-        #     if range_bounds[i] > range_bounds[partition_axis]:
-        #         partition_axis = i
+    def _find_partition_axis(self, data):        
+        lower_bounds = np.min(data, axis = 0)
+        upper_bounds = np.max(data, axis = 0)
 
         range_bounds = np.abs(upper_bounds - lower_bounds)
         partition_axis = np.argmax(range_bounds)
+        return partition_axis
 
+    
+    def build_tree(self):
 
-        # print(range_bounds)
-        # print(partition_axis)
+        data = copy.deepcopy(self.data)
+        n_samples = data.shape[0]
+        n_features = data.shape[1]
 
-        radius = 0
-        for i in range(n_features):
-            radius += np.power(0.5 * np.abs(upper_bounds[i] - lower_bounds[i]), self.p)
-        radius = np.power(radius, 1 / self.p)
+        # find bounding hyper-rectangle
+        hyper_rect = np.zeros((2, n_features))
+        hyper_rect[0, :] = data.min(axis = 0)
+        hyper_rect[1, :] = data.max(axis = 0)
 
-        if (n_samples % 2) == 0:
-            mid_index = int(np.ceil(n_samples / 2))
-        else:
-            mid_index = int(np.ceil(n_samples / 2)) - 1
+        # create root 
+        partition_axis = self._find_partition_axis(data)
+        indices = np.argsort(data[:, partition_axis], kind='mergesort')
 
-        print(X[:, partition_axis])
-        median = np.sort(X[:, partition_axis])[mid_index]
-        print(median)
+        data[:, :] = data[indices, :]
+        mid_val = data[n_samples // 2, partition_axis]
 
-        # selected_data = 
-        equal = np.where(X[:, partition_axis] == median)
-        less = np.where(X[:, partition_axis] < median)
-        greater = np.where(X[:, partition_axis] > median)
+        left_hyper_rect = hyper_rect.copy()
+        right_hyper_rect = hyper_rect.copy()
 
+        left_hyper_rect[1, 0] = mid_val
+        right_hyper_rect[0, 0] = mid_val
 
-        print(equal)
-        root.data = X[equal, :]
-        root.label = y[equal]
+        # data, indices, left_hyper_rect, right_hyper_rect, left_child_index, right_child_index
+        self.root = [(None, None, left_hyper_rect, right_hyper_rect, None, None)]
 
-        # print(X[equal, :])
-        # print(dataset[equal, -1])
-        # root.partition_value = median
-        root.partition_axis = partition_axis
-        root.radius = radius
+        # data, indices, depth, parent index, is_left_child
+        stack = [(data[:n_samples//2, :], indices[:n_samples//2], 1, 0, True),
+                (data[n_samples//2:, :], indices[n_samples//2:], 1, 0, False)]
 
+        while stack:
 
-     # if len(less) > 1:
-        left_child = Node()
-        # root.left_child = left_child
-        self._build_tree(left_child, X[less, :], y[less])
+            # pop data off stack
+            data, indices, depth, index, is_left_child = stack.pop()
+            n_samples = data.shape[0]
+            node_ptr = len(self.root)
 
-        # if len(greater) > 1:
-        right_child = Node()
-        # root.right_child = right_child
-        self._build_tree(right_child, X[greater, :], y[less])
+            _data, _indices, _left_hyper_rect, _right_hyper_rect, left_child, right_child = self.root.pop()
 
-        root.left_child = left_child
-        root.right_child = right_child
-
-
-
-    def build_tree(self, X, y):
-        self.root = Node()
-        # X_y = np.c_[X, y]
-        self._build_tree(self.root, X, y)
-
-
-    def dfs(self, root):
-        if not root:
-            return 
-
-        self.dfs(root.left_child)
-        # self.tmp.append((partition_axis, root.partition_value))
-        self.dfs(root.right_child)
-
-
-
-
-
+            if is_left_child:
+                self.tree[index] = _data, _indices, _left_hyper_rect, _right_hyper_rect, node_ptr, right_child
+            else:
+                self.tree[index] = _data, _indices, _left_hyper_rect, _right_hyper_rect, left_child, node_ptr
+            
+            # leaf node?
+            if n_samples < self.leaf_size:
+                _data = data
+                _indices = indices
+                leaf = (_data, _indices, None, None, 0, 0)
+                self.root.append(leaf)
+            else:
+                partition_axis = self._find_partition_axis(data)
+                cur_indices = np.argsort(data[:,partition_axis], kind='mergesort')
+                data[:,:] = data[cur_indices, :]
+                indices = indices[cur_indices]
+                node_ptr = len(self.root)
 
 
 
