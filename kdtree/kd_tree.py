@@ -1,7 +1,15 @@
+import copy
 import numpy as np
 
 class KDTree2(object):
-    def __init__(self, leaf_size = 10, splitter = None):
+    def __init__(self, data, leaf_size = 10, splitter = None):
+        self.data = data
+        if self.data.size == 0:
+            raise ValueError("X is an empty array")
+
+        num_samples = self.data.shape[0]
+        num_features = self.data.shape[1]
+
         if leaf_size < 1:
             raise ValueError("leaf_size must be greater than or equal to 1")
         self.leaf_size = leaf_size
@@ -29,6 +37,7 @@ class KDTree2(object):
         output:
             kd-tree:    list of tuples
         """
+        data = copy.deepcopy(self.data)
         num_samples, num_features = data.shape
         
         # find bounding hyper-rectangle
@@ -98,11 +107,6 @@ class KDTree2(object):
                 right_hyper_rect[0, partition_axis] = partition_val
                 # append node to tree
                 self.tree.append((None, None, left_hyper_rect, right_hyper_rect, None, None))
-
-        for t in self.tree:
-            print(t)
-        # return tree
-
     
     def _check_intersection(self, hyper_rect, centroid, radius):
         """
@@ -111,7 +115,7 @@ class KDTree2(object):
         """
         upper_bounds = hyper_rect[1, :]
         lower_bounds = hyper_rect[0, :]
-        c = centroid.copy()
+        c = copy.deepcopy(centroid)
 
         idx = c < lower_bounds
         c[idx] = lower_bounds[idx]
@@ -121,5 +125,13 @@ class KDTree2(object):
 
         return ((c - centroid)**2).sum() < radius
 
+    def _compute_quadratic_dist(self, data, leaf_indices, leaf_data, k):
+        """ find K nearest neighbours of data among ldata """
+        num_samples, num_features = leaf_data.shape
+        if k >= num_samples:
+            k = num_samples
 
+        dist = ((leaf_data - data[:num_samples,:])**2).sum(axis=0)
+        indices = np.argsort(dist, kind='mergesort')
+        return dist[indices[:k]], leaf_indices[indices[:k]]
 
