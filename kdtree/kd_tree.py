@@ -1,8 +1,12 @@
 import copy
 import numpy as np
 
+
+
+
 class KDTree2(object):
     def __init__(self, data, leaf_size = 10, splitter = None):
+
         self.data = data
         if self.data.size == 0:
             raise ValueError("X is an empty array")
@@ -26,7 +30,7 @@ class KDTree2(object):
         partition_axis = np.argmax(range_bounds)
         return partition_axis
 
-    def build_tree(self, data):
+    def build_tree(self):
         """
         build a kd-tree for O(n log n) nearest neighbour search
 
@@ -107,6 +111,11 @@ class KDTree2(object):
                 right_hyper_rect[0, partition_axis] = partition_val
                 # append node to tree
                 self.tree.append((None, None, left_hyper_rect, right_hyper_rect, None, None))
+
+        for t in self.tree:
+            print(t)
+        # return tree
+
     
     def _check_intersection(self, hyper_rect, centroid, radius):
         """
@@ -115,7 +124,7 @@ class KDTree2(object):
         """
         upper_bounds = hyper_rect[1, :]
         lower_bounds = hyper_rect[0, :]
-        c = copy.deepcopy(centroid)
+        c = centroid.copy()
 
         idx = c < lower_bounds
         c[idx] = lower_bounds[idx]
@@ -123,7 +132,7 @@ class KDTree2(object):
         idx = c > upper_bounds
         c[idx] = upper_bounds[idx]
 
-        return ((c - centroid)**2).sum() < radius
+        return ((c-centroid)**2).sum() < radius
 
     def _compute_quadratic_dist(self, data, leaf_indices, leaf_data, k):
         """ find K nearest neighbours of data among ldata """
@@ -135,3 +144,30 @@ class KDTree2(object):
         indices = np.argsort(dist, kind='mergesort')
         return dist[indices[:k]], leaf_indices[indices[:k]]
 
+
+    def search_kdtree(self, data, K):
+        """ find the k nearest neighbours of datapoint in a kdtree """
+        stack = [self.tree[0]]
+        knn = [(np.inf, None)]*K
+        _datapt = data[:,0]
+        while stack:
+            
+            leaf_idx, leaf_data, left_hrect, \
+                    right_hrect, left, right = stack.pop()
+
+            # leaf
+            if leaf_idx is not None:
+                _knn = self._compute_quadratic_dist(data, leaf_idx, leaf_data, K)
+                if _knn[0][0] < knn[-1][0]:
+                    knn = sorted(knn + _knn)[:K]
+
+            # not a leaf
+            else:
+                # check left branch
+                if self._check_intersection(left_hrect, knn[-1][0], _datapt):
+                    stack.append(self.tree[left])
+
+                # chech right branch
+                if self._check_intersection(right_hrect, knn[-1][0], _datapt):
+                    stack.append(self.tree[right])              
+        return knn
