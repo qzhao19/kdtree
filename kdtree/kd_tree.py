@@ -2,8 +2,6 @@ import copy
 import numpy as np
 
 
-
-
 class KDTree2(object):
     def __init__(self, data, leaf_size = 10, splitter = None):
 
@@ -112,10 +110,6 @@ class KDTree2(object):
                 # append node to tree
                 self.tree.append((None, None, left_hyper_rect, right_hyper_rect, None, None))
 
-        for t in self.tree:
-            print(t)
-        # return tree
-
     
     def _check_intersection(self, hyper_rect, centroid, radius):
         """
@@ -134,7 +128,7 @@ class KDTree2(object):
 
         return ((c-centroid)**2).sum() < radius
 
-    def _compute_quadratic_dist(self, data, leaf_indices, leaf_data, k):
+    def _compute_dist(self, data, leaf_indices, leaf_data, k):
         """ find K nearest neighbours of data among ldata """
         num_samples, num_features = leaf_data.shape
         if k >= num_samples:
@@ -145,7 +139,7 @@ class KDTree2(object):
         return dist[indices[:k]], leaf_indices[indices[:k]]
 
 
-    def search_kdtree(self, data, K):
+    def query(self, data, K):
         """ find the k nearest neighbours of datapoint in a kdtree """
         stack = [self.tree[0]]
         knn = [(np.inf, None)]*K
@@ -157,7 +151,7 @@ class KDTree2(object):
 
             # leaf
             if leaf_idx is not None:
-                _knn = self._compute_quadratic_dist(data, leaf_idx, leaf_data, K)
+                _knn = self._compute_dist(data, leaf_idx, leaf_data, K)
                 if _knn[0][0] < knn[-1][0]:
                     knn = sorted(knn + _knn)[:K]
 
