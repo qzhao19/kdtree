@@ -1,8 +1,7 @@
 import copy
 import numpy as np
 
-
-class KDTree2(object):
+class KDTree(object):
     def __init__(self, data, leaf_size = 10, splitter = None):
 
         self.data = data
@@ -19,11 +18,9 @@ class KDTree2(object):
 
         self.splitter = splitter
 
-
     def _find_partition_axis(self, data):
         lower_bounds = np.min(data, axis = 0)
         upper_bounds = np.max(data, axis = 0)
-
         range_bounds = np.abs(upper_bounds - lower_bounds)
         partition_axis = np.argmax(range_bounds)
         return partition_axis
@@ -41,7 +38,6 @@ class KDTree2(object):
         """
         data = copy.deepcopy(self.data)
         num_samples, num_features = data.shape
-        
         # find bounding hyper-rectangle
         hyper_rect = np.zeros((2, num_features))
         hyper_rect[0,:] = data.min(axis=0)
@@ -50,7 +46,7 @@ class KDTree2(object):
         # create root of kd-tree
         partition_axis = self._find_partition_axis(data)
         indices = np.argsort(data[:, partition_axis], kind='mergesort')
-        data[:,:] = data[indices, :]
+        data = data[indices, :]
         partition_val = data[num_samples//2, partition_axis]
 
         left_hyper_rect = hyper_rect.copy()
@@ -90,7 +86,7 @@ class KDTree2(object):
                 # splitdim = depth % ndim
                 partition_axis = self._find_partition_axis(data)
                 indices = np.argsort(data[:, partition_axis], kind='mergesort')
-                data[:,:] = data[indices, :]
+                data = data[indices, :]
                 data_indices = data_indices[indices]
                 node_ptr = len(self.tree)
 
@@ -105,12 +101,12 @@ class KDTree2(object):
                 else:
                     left_hyper_rect = _right_hyper_rect.copy()
                     right_hyper_rect = _right_hyper_rect.copy()
+                
                 left_hyper_rect[1, partition_axis] = partition_val
                 right_hyper_rect[0, partition_axis] = partition_val
                 # append node to tree
                 self.tree.append((None, None, left_hyper_rect, right_hyper_rect, None, None))
 
-    
     def _check_intersection(self, hyper_rect, centroid, radius):
         """
         checks if the hyperrectangle hrect intersects with the
@@ -134,34 +130,50 @@ class KDTree2(object):
         if k >= num_samples:
             k = num_samples
 
-        dist = ((leaf_data - data[:num_samples,:])**2).sum(axis=0)
+        dist = ((leaf_data - data[:num_samples,:])**2).sum(axis=1)
         indices = np.argsort(dist, kind='mergesort')
-        return dist[indices[:k]], leaf_indices[indices[:k]]
+        return list(zip(dist[indices[:k]], leaf_indices[indices[:k]]))
 
-
-    def query(self, data, K):
+    def _query_single(self, data, k):
         """ find the k nearest neighbours of datapoint in a kdtree """
+        # root = self.tree
         stack = [self.tree[0]]
-        knn = [(np.inf, None)]*K
-        _datapt = data[:,0]
+        knn = [(np.inf, None)]*k
+        single_data = data[0, :]
         while stack:
-            
-            leaf_idx, leaf_data, left_hrect, \
-                    right_hrect, left, right = stack.pop()
+            leaf_idx, leaf_data, left_hyper_rect, \
+                    right_hyper_rect, left, right = stack.pop()
 
             # leaf
             if leaf_idx is not None:
-                _knn = self._compute_dist(data, leaf_idx, leaf_data, K)
+                _knn = self._compute_dist(data, leaf_idx, leaf_data, k)
                 if _knn[0][0] < knn[-1][0]:
-                    knn = sorted(knn + _knn)[:K]
+                    knn = sorted(knn + _knn)[:k]
 
             # not a leaf
             else:
                 # check left branch
-                if self._check_intersection(left_hrect, knn[-1][0], _datapt):
+                if self._check_intersection(left_hyper_rect, single_data, knn[-1][0]):
                     stack.append(self.tree[left])
 
                 # chech right branch
-                if self._check_intersection(right_hrect, knn[-1][0], _datapt):
+                if self._check_intersection(right_hyper_rect, single_data, knn[-1][0]):
                     stack.append(self.tree[right])              
+        return knn
+    
+    def query(self, data, K):
+        """ find the K nearest neighbours for data points in data
+        """
+
+        num_samples, num_features = data.shape
+
+        # search kdtree
+        knn = []
+        for i in np.arange(num_samples):
+            # _data = data[:,i].reshape((param,1)).repeat(leafsize, axis=1)
+            _data = data[i, :][np.newaxis].repeat(self.leaf_size, axis=0)
+            # print(_data)
+            _knn = self._query_single(_data, K)
+            knn.append(_knn)
+
         return knn
