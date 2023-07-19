@@ -18,6 +18,7 @@ class KDTree(object):
 
         self.splitter = splitter
 
+
     def _find_partition_axis(self, data):
         lower_bounds = np.min(data, axis = 0)
         upper_bounds = np.max(data, axis = 0)
@@ -134,11 +135,12 @@ class KDTree(object):
         indices = np.argsort(dist, kind='mergesort')
         return list(zip(dist[indices[:k]], leaf_indices[indices[:k]]))
 
-    def _query_single(self, data, k):
+
+    def _query_single_data(self, data, K):
         """ find the k nearest neighbours of datapoint in a kdtree """
         # root = self.tree
         stack = [self.tree[0]]
-        knn = [(np.inf, None)]*k
+        knn = [(np.inf, None)]*K
         single_data = data[0, :]
         while stack:
             leaf_idx, leaf_data, left_hyper_rect, \
@@ -146,9 +148,9 @@ class KDTree(object):
 
             # leaf
             if leaf_idx is not None:
-                _knn = self._compute_dist(data, leaf_idx, leaf_data, k)
+                _knn = self._compute_dist(data, leaf_idx, leaf_data, K)
                 if _knn[0][0] < knn[-1][0]:
-                    knn = sorted(knn + _knn)[:k]
+                    knn = sorted(knn + _knn)[:K]
 
             # not a leaf
             else:
@@ -161,18 +163,45 @@ class KDTree(object):
                     stack.append(self.tree[right])              
         return knn
     
-    def query(self, data, K):
-        """ find the K nearest neighbours for data points in data
-        """
-        num_samples, _ = data.shape
 
+    def query(self, data, K):
+        """ find the K nearest neighbours for data points in data,
+            using an O(n log n) kd-tree """
+
+        num_samples, _ = data.shape
         # search kdtree
         knn = []
         for i in np.arange(num_samples):
             # _data = data[:,i].reshape((param,1)).repeat(leafsize, axis=1)
             _data = data[i, :][np.newaxis].repeat(self.leaf_size, axis=0)
             # print(_data)
-            _knn = self._query_single(_data, K)
+            _knn = self._query_single_data(_data, K)
             knn.append(_knn)
 
         return knn
+
+    def _query_radius_single_data(self, data, radius):
+        # root = self.tree
+        stack = [self.tree[0]]
+        inside = []
+        while stack:
+            leaf_idx, leaf_data, left_hyper_rect, \
+                    right_hyper_rect, left, right = stack.pop()
+
+            # leaf
+            if leaf_idx is not None:
+                num_features = leaf_data.shape[1]
+                distance = np.sqrt(((leaf_data - data.reshape((1,num_features)))**2).sum(axis=0))
+                nn = np.where(distance<=radius)
+                if len(nn[0]):
+                    idx = leaf_idx[nn]
+                    distance = distance[nn]
+                    inside += (zip(distance, idx))
+
+            else:
+                if self._check_intersection(left_hyper_rect, data, radius):
+                    stack.append(self.tree[left])
+
+                if self._check_intersection(right_hyper_rect, data, radius):
+                    stack.append(self.tree[right])              
+        return inside
