@@ -164,8 +164,7 @@ class KDTree(object):
     def query(self, data, K):
         """ find the K nearest neighbours for data points in data
         """
-
-        num_samples, num_features = data.shape
+        num_samples, _ = data.shape
 
         # search kdtree
         knn = []
