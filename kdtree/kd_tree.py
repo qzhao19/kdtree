@@ -205,3 +205,16 @@ class KDTree(object):
                 if self._check_intersection(right_hyper_rect, data, radius):
                     stack.append(self.tree[right])              
         return inside
+    
+    def query_radius(self, data, radius):
+        num_samples, _ = data.shape
+        # search kdtree
+        knn = []
+        for i in np.arange(num_samples):
+            # _data = data[:,i].reshape((param,1)).repeat(leafsize, axis=1)
+            _data = data[i, :][np.newaxis].repeat(self.leaf_size, axis=0)
+            # print(_data)
+            _knn = self._query_radius_single_data(_data, radius)
+            knn.append(_knn)
+
+        return knn
