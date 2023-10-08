@@ -173,7 +173,7 @@ class KDTree(object):
         knn = []
         for i in np.arange(num_samples):
             # _data = data[:,i].reshape((param,1)).repeat(leafsize, axis=1)
-            _data = data[i, :][np.newaxis].repeat(self.leaf_size, axis=0)
+            _data = data[i, :][np.newaxis].repeat(self.leaf_size, axis=1)
             # print(_data)
             _knn = self._query_single_data(_data, K)
             knn.append(_knn)
@@ -191,7 +191,7 @@ class KDTree(object):
             # leaf
             if leaf_idx is not None:
                 num_features = leaf_data.shape[1]
-                distance = np.sqrt(((leaf_data - data.reshape((1,num_features)))**2).sum(axis=0))
+                distance = np.sqrt(((leaf_data - data.reshape((1, num_features)))**2).sum(axis = 1))
                 nn = np.where(distance<=radius)
                 if len(nn[0]):
                     idx = leaf_idx[nn]
@@ -212,8 +212,7 @@ class KDTree(object):
         knn = []
         for i in np.arange(num_samples):
             # _data = data[:,i].reshape((param,1)).repeat(leafsize, axis=1)
-            _data = data[i, :][np.newaxis].repeat(self.leaf_size, axis=0)
-            # print(_data)
+            _data = data[i, :]
             _knn = self._query_radius_single_data(_data, radius)
             knn.append(_knn)
 
