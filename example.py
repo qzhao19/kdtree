@@ -14,5 +14,7 @@ def test(data):
 
     nn = kd_tree.query(X_test, 4)
 
+    radius = kd_tree.query_radius(X_test, 1.0)
+
 if __name__ == "__main__":
     test(datasets)
