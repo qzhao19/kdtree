@@ -1,3 +1,5 @@
+#!/bin/env python
+
 import ctypes 
 import os
 import multiprocessing as processing
