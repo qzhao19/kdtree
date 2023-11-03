@@ -1,20 +1,29 @@
 import numpy as np
-from kdtree import KDTree
 from sklearn import datasets
+from kdtree import kd_tree
 
-def test(data):
+
+def test_kdtree(data):
     num_samples, _ = data.shape
     
     ratio = 0.85
     X_train = data[:int(ratio*num_samples), :]
     X_test = data[int(ratio*num_samples):, :]
 
-    kd_tree = KDTree(X_train)
-    kd_tree.build_tree()
+    kdtree = kd_tree.KDTree(X_train)
+    kdtree.build_tree()
 
-    nn = kd_tree.query(X_test, 4)
+    knn = kdtree.query(X_test, 4)
+    for nn in knn:
+        print(nn)
 
-    radius = kd_tree.query_radius(X_test, 1.0)
+    rnn = kdtree.query_radius(X_test, 1.0)
+    print("****************")
+    for nn in rnn:
+        print(nn)
 
 if __name__ == "__main__":
-    test(datasets)
+    iris = datasets.load_iris()
+    X = iris.data
+    y = iris.target
+    test_kdtree(X)
