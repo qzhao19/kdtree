@@ -1,5 +1,4 @@
 #!/bin/env python
-
 import copy
 import heapq
 import numpy as np
@@ -11,7 +10,7 @@ class KDTree(object):
     ----------
     data: 2D ndarray
         shape =(ndata, ndim), preferentially C order
-    
+
     leaf_size: int, default is 10
         max number of data points to leave in a leaf
     """
@@ -131,9 +130,8 @@ class KDTree(object):
                 self.tree.append(branch_node)
 
     def _check_intersection(self, hyper_rect, centroid, radius):
-        """
-        checks if the hyperrectangle hrect intersects with the
-        hypersphere defined by centroid and r2
+        """checks if the hyperrectangle hrect intersects with the
+           hypersphere defined by centroid and r2
         """
         upper_bounds = hyper_rect[1, :]
         lower_bounds = hyper_rect[0, :]
@@ -144,11 +142,10 @@ class KDTree(object):
                 c[i] = upper_bounds[i]
             if c[i] < lower_bounds[i]:
                 c[i] = lower_bounds[i]
-
         return np.sqrt(((c-centroid)**2).sum()) < radius
 
     def _compute_dist(self, data, leaf_indices, leaf_data, k):
-        """ find K nearest neighbours of data among ldata """
+        """find K nearest neighbours of data among ldata """
         nn = []
         num_samples, num_features = leaf_data.shape
         if k >= num_samples:
@@ -162,16 +159,16 @@ class KDTree(object):
         return nn
 
     def _query_single_data(self, data, k):
-        """ find the k nearest neighbours of datapoint in a kdtree """
+        """find the k nearest neighbours of datapoint in a kdtree """
         stack = [self.tree[0]]
-        knn = []
-        heapq.heappush(knn, (np.inf, 0))
+        knn = [(np.inf, 0)]*k
+        heapq.heapify(knn)
         while stack:
             node = stack.pop()
             # leaf
             if node.indices is not None:
                 single_knn = self._compute_dist(data, node.indices, node.data, k)
-                knn = list(heapq.merge(single_knn, knn))
+                knn = list(heapq.merge(single_knn, knn))[:k]
 
             # not a leaf
             else:
@@ -186,11 +183,14 @@ class KDTree(object):
         return knn
     
     def query(self, data, k):
+        """ find the K nearest neighbours for data points in data,
+            using an O(n log n) kd-tree 
+        """
         num_samples, _ = data.shape
         # search kdtree
         knn = []
         for i in np.arange(num_samples):
-            single_data = data[i]
+            single_data = data[i, :]
             single_knn = self._query_single_data(single_data, k)
             knn.append(single_knn)
 
@@ -209,7 +209,6 @@ class KDTree(object):
                     idx = node.indices[nn]
                     distance = distance[nn]
                     inside.extend(list(zip(distance, idx)))
-            # branch node
             else:
                 if self._check_intersection(node.left_hyper_rect, data, radius):
                     stack.append(self.tree[node.left])
@@ -227,5 +226,5 @@ class KDTree(object):
             single_knn = self._query_radius_single_data(single_data, radius)
             if single_knn:
                 knn.append(single_knn)
-
         return knn
+   
